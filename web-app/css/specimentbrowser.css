@@ -1,0 +1,52 @@
+.space-after {
+    margin-bottom: 10px;
+}
+
+.space-before {
+    margin-top: 10px;
+}
+
+.large-space-after {
+    margin-bottom: 20px;
+}
+
+.large-space-before {
+    margin-top: 20px;
+}
+
+.center {text-align: center}
+
+.clickable {
+    cursor: pointer;
+    /*text-decoration: underline;*/
+    color: #007fb6;
+}
+
+ul {
+    list-style: none;
+}
+
+.clickable:hover,
+.clickable:focus {
+    color: #00638d;
+    text-decoration: underline;
+}
+
+#imagesList {
+    margin:0;
+}
+
+.imgCon {
+    display: inline-block;
+    margin-right: 8px;
+    text-align: center;
+    line-height: 1.3em;
+    background-color: #DDD;
+    color: #DDD;
+    padding: 5px;
+    margin-bottom: 8px;
+}
+
+.imgCon img {
+    max-height:150px;
+}
