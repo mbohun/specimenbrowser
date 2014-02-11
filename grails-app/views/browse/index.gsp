@@ -20,15 +20,25 @@
             <div class="span3 well well-small">
                 <div data-bind="with:taxonomy">
                     <h3>Taxonomy</h3>
-                    <ul data-bind="foreach:hierarchy" style="margin-left:0; margin-bottom:0;">
-                        <li><span style="font-weight:bold;" data-bind="text:rank"></span>: <span data-bind="text:name"></span></li>
-                    </ul>
-                    <span style="font-weight:bold;" data-bind="text:rankLabel"></span>:
-                    <ul>
-                        <!-- ko foreach:values -->
-                        <li><span class="clickable" data-bind="click:$parent.filterSearch,attr:{id:label}"><span data-bind="text:label"></span> (<span data-bind="text:count"></span>)</span></li>
+                    <ul style="margin-left:0; margin-bottom:0;">
+                        <!-- ko foreach:hierarchy -->
+                        <li>
+                            <span style="font-weight:bold;" class="clickable"
+                                  data-bind="text:displayRank,click:$parent.setRank"></span>:
+                            <span data-bind="text:name"></span>
+                        </li>
                         <!-- /ko -->
-                        <li data-bind="visible:!atTop()"><span class="clickable" data-bind="click:filterSearch"><i class="icon-arrow-up"></i></span></li>
+                        <li>
+                            <span style="font-weight:bold;" class="clickable"
+                                  data-bind="text:currentRankLabel,click:setLowestRank,visible:selectedASingleValueAtLowestRank"></span>
+                            <span style="font-weight:bold;"
+                                  data-bind="text:currentRankLabel,visible:!selectedASingleValueAtLowestRank()"></span>
+                            <ul>
+                                <!-- ko foreach:valuesForCurrentRank -->
+                                <li><span class="clickable" data-bind="click:$parent.filterSearch,attr:{id:label}"><span data-bind="text:label"></span> (<span data-bind="text:count"></span>)</span></li>
+                                <!-- /ko -->
+                            </ul>
+                        </li>
                     </ul>
                 </div>
                 <div data-bind="foreach:facets">
@@ -49,7 +59,10 @@
                 <div class="alert alert-error" data-bind="visible:loadStatus()==='error'">An error occurred.</div>
                 <div class="alert alert-error" data-bind="visible:loadStatus()==='timeout'">The search timed out.</div>
                 <div id="debug" data-bind="if:taxonomy()">
-                    %{--<div data-bind="text:ko.toJSON(taxonomy().hierarchy,null,2)"></div>--}%
+                    %{--<pre>Current rank: <span data-bind="text:taxonomy().currentRank"></span></pre>
+                    <pre>selectedASingleValueAtLowestRank: <span data-bind="text:taxonomy().selectedASingleValueAtLowestRank"></span></pre>
+                    <pre data-bind="text:ko.toJSON(taxonomy().hierarchy,null,2)"></pre>--}%
+                    %{--<pre data-bind="text:ko.toJSON(query,null,2)"></pre>--}%
                 </div>
                 <div data-bind="foreach: imagesList">
                     <div class="imgCon"><a data-bind="attr:{href:bieLink}"><img data-bind="attr:{src:smallImageUrl}"/><br/><span data-bind="text:imageCaption"></span></a></div>
@@ -61,16 +74,16 @@
     <r:script>
 
         var wsBase = "/occurrences/search.json",
-            uiBase = "/occurrences/search",
-            facetNames = {type_status: 'Types', raw_sex: 'Sex', family: 'Family', order: 'Order', 'class': 'Class',
-                kingdom: 'Kingdom', phylum: 'Phylum', genus: 'Genus', species: 'Species'},
-            rankFacets = "facets=kingdom&facets=phylum&facets=class&facets=order&facets=family&facets=genus&facets=species",
-            mainQuery = "&facets=type_status&facets=raw_sex&fq=multimedia%3AImage&pageSize=100",
-            facetsToShow = ["type_status","raw_sex"];
+                uiBase = "/occurrences/search",
+                facetNames = {type_status: 'Types', raw_sex: 'Sex', family: 'Family', order: 'Order', 'class': 'Class',
+                    kingdom: 'Kingdom', phylum: 'Phylum', genus: 'Genus', species: 'Species'},
+                rankFacets = "facets=kingdom&facets=phylum&facets=class&facets=order&facets=family&facets=genus&facets=species",
+                mainQuery = "&facets=type_status&facets=raw_sex&fq=multimedia%3AImage&pageSize=100",
+                facetsToShow = ["type_status", "raw_sex"];
 
         $(window).load(function () {
 
-            function Facet (data, parent) {
+            function Facet(data, parent) {
                 var self = this;
                 this.fieldName = data.fieldName;
                 this.fieldLabel = facetNames[data.fieldName] || data.fieldName;
@@ -87,7 +100,7 @@
                 };
             }
 
-            function Image (data) {
+            function Image(data) {
                 var self = this;
                 this.scientificName = data.scientificName;
                 this.smallImageUrl = data.smallImageUrl;
@@ -105,7 +118,7 @@
                 });
             }
 
-            function Query () {
+            function Query() {
                 var self = this;
                 this.filters = ko.observableArray([]);
                 this.addFilter = function (name, value) {
@@ -131,77 +144,129 @@
                 });
             }
 
-            function Taxonomy (parent) {
+            function Taxonomy(parent) {
                 var self = this,
-                    ranks = ['kingdom','phylum','class','order','family','genus','species']; // support division later
-                this.highestRankWithMultipleValues = ko.observable('');
-                this.originalRank = ko.observable('');
+                    ranks = ['kingdom', 'phylum', 'class', 'order', 'family', 'genus', 'species']; // support division later
+
+                // the rank whose facets we are currently displaying
+                this.currentRank = ko.observable('');
+
+                // the rank that is being targeted for the next search
+                /* eg if current rank is Order and the user selects a particular Order, the next rank
+                      will be Family. We need to know this because the targeted rank cannot always be
+                      divined from the results - such as when the targeted rank has only one facet value.
+                 */
+                this.nextRank = "";
+
+                // a flag that indicates that a specific value has been chosen from the lowest rank
+                /* we need this because the behaviour is different when there is no lower rank to display
+                 */
                 this.selectedASingleValueAtLowestRank = ko.observable(false);
-                this.rankLabel = ko.computed(function () { return facetNames[self.highestRankWithMultipleValues()] || self.highestRankWithMultipleValues() });
-                this.values = ko.observableArray();
+
+                // the display version of the current rank - these are defined in the facetNames list
+                this.currentRankLabel = ko.computed(function () {
+                    return facetNames[self.currentRank()] || self.currentRank()
+                });
+
+                // the facet values for the current rank
+                this.valuesForCurrentRank = ko.observableArray();
+
+                // the rank hierarchy that is above the current rank
                 this.hierarchy = ko.observableArray();
-                this.getRank = function (facets, rank) {
+
+                // returns facet values for the specified rank
+                this.getFacetsForRank = function (facets, rank) {
                     var field = $.grep(facets, function (facet, idx) {
                         return facet.fieldName === rank;
                     });
                     return field.length === 0 ? undefined : field[0].fieldResult;
                 };
-                this.load = function (facets) {
-                    var done = false,
-                        numberOfRanks = ranks.length;
-                    self.hierarchy.removeAll();
-                    $.each(ranks, function (idx, rank) {
-                        var result = self.getRank(facets, rank);
-                        if (result !== undefined && !done && result.length > 0) {
-                            if (result.length === 1 && idx !== numberOfRanks-1) {
-                                self.hierarchy.push({
-                                    rank: facetNames[rank] || rank,
-                                    name: result[0].label,
-                                    count: result[0].count});
-                            } else {
-                                self.highestRankWithMultipleValues(rank);
-                                self.values(result);
-                                self.originalRank(self.originalRank() || self.highestRankWithMultipleValues());
-                                done = true;
-                            }
-                        }
-                    });
-                    console.log('highest rank with multiple is ' + self.highestRankWithMultipleValues());
-                    console.log('parent rank is ' + self.parentRank(self.highestRankWithMultipleValues()));
 
+                // adds a rank and its name to the rank hierarchy
+                this.addToHierarchy = function (rank, value) {
+                    self.hierarchy.push({
+                        rank: rank,
+                        displayRank: facetNames[rank] || rank,
+                        name: value.label,
+                        count: value.count});
                 };
-                this.parentRank = function (rank) {
-                    if (rank === '') return 'species';
-                    var idx = $.inArray(rank, ranks);
-                    return idx > 0 ? ranks[idx - 1] : '';
-                };
-                this.atTop = ko.computed(function () {
-                    return self.highestRankWithMultipleValues() === self.originalRank();
-                });  // true if there is a parent rank that has more than 1 value
-                this.filterSearch = function () {
-                    var rank = self.highestRankWithMultipleValues();
-                    if (this === self) {
-                        // the all link has been clicked
-                        // this gets tricky when we are at the lowest rank level
-                        if (self.selectedASingleValueAtLowestRank()) {
-                            console.log('remove filter ' + rank);
-                            self.selectedASingleValueAtLowestRank(false);
-                            parent.removeFilter(rank);
-                        } else {
-                            console.log('remove filter ' + self.parentRank(rank));
-                            parent.removeFilter(self.parentRank(rank));
+
+                // loads the taxonomy object's values when a new search has been done
+                this.load = function (facets) {
+                    var numberOfRanks = ranks.length;
+                    self.hierarchy.removeAll();
+                    if (self.currentRank() === '') {
+                        // no ranks have been determined yet so this must be the initial query
+                        // determine a starting rank based on the data
+                        var done = false;
+                        $.each(ranks, function (idx, rank) {
+                            var result = self.getFacetsForRank(facets, rank);
+                            if (result !== undefined && !done && result.length > 0) {
+                                if (result.length > 1) {
+                                    self.currentRank(ranks[idx]);
+                                    done = true;
+                                }
+                            }
+                        });
+                        // catch-all for if all ranks have 1 value
+                        if (self.currentRank() === '') {
+                            self.currentRank(ranks[ranks.length - 1]);
                         }
                     } else {
-                        if (rank === ranks[ranks.length - 1]) { // is the lowest rank
-                            self.selectedASingleValueAtLowestRank(true);
-                        } else {
-                            self.selectedASingleValueAtLowestRank(false);
-                        }
-                        console.log('selected single ' + self.selectedASingleValueAtLowestRank());
-                        console.log('add filter ' + rank);
-                        parent.addFilter(rank, this.label);
+                        // set current rank to the next rank to display
+                        // Note this is not necessarily the child rank - it can be any rank
+                        self.currentRank(self.nextRank);
                     }
+                    // add ranks above the current to the hierarchy
+                    $.each(ranks.slice(0, $.inArray(self.currentRank(),ranks)), function (idx, rank) {
+                        var result = self.getFacetsForRank(facets, rank);
+                        self.addToHierarchy(rank, result[0]);
+                    });
+                    // add the current rank values
+                    self.valuesForCurrentRank(self.getFacetsForRank(facets, self.currentRank()));
                 };
+
+                // returns the next lower rank unless it is already at the lowest rank
+                this.childRank = function (rank) {
+                    var idx = $.inArray(rank, ranks);
+                    return idx < ranks.length-1 ? ranks[idx + 1] : rank;
+                };
+
+                // removes filters for the specified rank and all below it
+                this.clearRankAndBelow = function (rank) {
+                    var idx = $.inArray(rank, ranks),
+                            ranksToClear = ranks.slice(idx);
+                    $.each(ranksToClear, function (idx, item) {
+                        parent.removeFilter(item);
+                    });
+                };
+
+                // sets a new target rank and triggers a new search by removing filters for the target
+                //  rank and any below it
+                this.setRank = function () {
+                    self.nextRank = this.rank;
+                    self.clearRankAndBelow(this.rank);
+                };
+
+                // handles the setRank functionality for when the lowest rank link is clicked
+                this.setLowestRank = function () {
+                    self.nextRank = ranks[ranks.length-1];
+                    self.clearRankAndBelow(self.nextRank);
+                    self.selectedASingleValueAtLowestRank(false);
+                };
+
+                // handles selection of a specific rank value - triggers a new search by adding a filter
+                this.filterSearch = function () {
+                    var rank = self.currentRank();
+                    // increment target rank unless we are already at the bottom
+                    if (rank === ranks[ranks.length - 1]) { // is the lowest rank
+                        self.selectedASingleValueAtLowestRank(true);
+                    } else {
+                        self.selectedASingleValueAtLowestRank(false);
+                        self.nextRank = self.childRank(self.currentRank());
+                    }
+                    parent.addFilter(rank, this.label);
+                }
             }
 
             function ViewModel() {
@@ -227,8 +292,8 @@
                 this.loadImages = function () {
                     var imagesQueryUrl = "?" + rankFacets + mainQuery + "&q=" +
                                     buildQueryString(self.entityUid()),
-                        url = urlConcat(biocacheServicesUrl, wsBase + imagesQueryUrl + self.query.queryString()),
-                        request;
+                            url = urlConcat(biocacheServicesUrl, wsBase + imagesQueryUrl + self.query.queryString()),
+                            request;
                     console.log('Query is ' + url);
                     self.isLoading(true);
                     request = $.ajax({url: url, dataType: 'jsonp', timeout: 20000});
