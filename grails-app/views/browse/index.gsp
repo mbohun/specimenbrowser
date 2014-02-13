@@ -18,17 +18,17 @@
         </div>
         <div class="row-fluid">
             <div class="span3 well well-small">
-                <div data-bind="with:taxonomy">
+                <div data-bind="with:taxonomy" id="taxonomyFacet">
                     <h3>Taxonomy</h3>
                     <ul style="margin-left:0; margin-bottom:0;">
                         <!-- ko foreach:hierarchy -->
-                        <li>
+                        <li data-bind="css:levelClass">
                             <span style="font-weight:bold;" class="clickable"
                                   data-bind="text:displayRank,click:$parent.setRank"></span>:
                             <span data-bind="text:name"></span>
                         </li>
                         <!-- /ko -->
-                        <li>
+                        <li data-bind="css:levelClassForCurrentRank">
                             <span style="font-weight:bold;" class="clickable"
                                   data-bind="text:currentRankLabel,click:setLowestRank,visible:selectedASingleValueAtLowestRank"></span>
                             <span style="font-weight:bold;"
@@ -183,13 +183,19 @@
                 };
 
                 // adds a rank and its name to the rank hierarchy
-                this.addToHierarchy = function (rank, value) {
+                this.addToHierarchy = function (rank, value, idx) {
                     self.hierarchy.push({
                         rank: rank,
                         displayRank: facetNames[rank] || rank,
                         name: value.label,
-                        count: value.count});
+                        count: value.count,
+                        levelClass: 'level' + idx});
                 };
+
+                // sets the level of indentation for the current rank based on the number of ranks above it
+                this.levelClassForCurrentRank = ko.computed(function () {
+                    return 'level' + (self.hierarchy().length);
+                });
 
                 // loads the taxonomy object's values when a new search has been done
                 this.load = function (facets) {
@@ -220,7 +226,7 @@
                     // add ranks above the current to the hierarchy
                     $.each(ranks.slice(0, $.inArray(self.currentRank(),ranks)), function (idx, rank) {
                         var result = self.getFacetsForRank(facets, rank);
-                        self.addToHierarchy(rank, result[0]);
+                        self.addToHierarchy(rank, result[0], idx);
                     });
                     // add the current rank values
                     self.valuesForCurrentRank(self.getFacetsForRank(facets, self.currentRank()));

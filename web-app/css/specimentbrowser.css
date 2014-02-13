@@ -50,3 +50,40 @@ ul {
 .imgCon img {
     max-height:150px;
 }
+
+#taxonomyFacet .level0 {
+    margin-left: 0;
+}
+
+#taxonomyFacet .level1 {
+    margin-left: 4px;
+}
+
+#taxonomyFacet .level2 {
+    margin-left: 8px;
+}
+
+#taxonomyFacet .level3 {
+    margin-left: 12px;
+}
+
+#taxonomyFacet .level4 {
+    margin-left: 16px;
+}
+
+#taxonomyFacet .level5 {
+    margin-left: 20px;
+}
+
+#taxonomyFacet .level6 {
+    margin-left: 24px;
+}
+
+#taxonomyFacet .level7 {
+    margin-left: 28px;
+}
+
+#taxonomyFacet .level8 {
+    margin-left: 32px;
+}
+
