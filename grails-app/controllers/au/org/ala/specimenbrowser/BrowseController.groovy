@@ -2,5 +2,7 @@ package au.org.ala.specimenbrowser
 
 class BrowseController {
 
-    def index() { }
+    def index(String id) {
+        render view:'index', model: [uid: (id ?: 'co56')]
+    }
 }

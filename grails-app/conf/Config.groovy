@@ -58,7 +58,13 @@ if (!biocache.baseURL) {
     biocache.baseURL = "http://biocache.ala.org.au/"
 }
 if(!biocacheServicesUrl){
-    biocacheServicesUrl = "http://biocache.ala.org.au/ws"
+    biocacheServicesUrl = "http://biocache-test.ala.org.au/ws"
+}
+if(!collectory.baseURL){
+    collectory.baseURL = "http://collections.ala.org.au/"
+}
+if(!collectory.servicesURL){
+    collectory.servicesURL = "http://collections.ala.org.au/ws/"
 }
 if (!spatial.baseURL) {
     spatial.baseURL = "http://spatial.ala.org.au/"
