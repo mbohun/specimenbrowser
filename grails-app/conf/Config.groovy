@@ -46,6 +46,11 @@ grails.mime.types = [
 grails.resources.adhoc.patterns = ['/images/*', '/css/*', '/js/*', '/plugins/*']
 
 /******************************************************************************\
+ *  RELOADABLE CONFIG
+ \******************************************************************************/
+reloadable.cfgs = ["file:/data/${appName}/config/${appName}-config.properties"]
+
+/******************************************************************************\
  *  EXTERNAL SERVERS
  \******************************************************************************/
 if (!bie.baseURL) {
@@ -58,7 +63,7 @@ if (!biocache.baseURL) {
     biocache.baseURL = "http://biocache.ala.org.au/"
 }
 if(!biocacheServicesUrl){
-    biocacheServicesUrl = "http://biocache-test.ala.org.au/ws"
+    biocacheServicesUrl = "http://biocache.ala.org.au/ws"
 }
 if(!collectory.baseURL){
     collectory.baseURL = "http://collections.ala.org.au/"
