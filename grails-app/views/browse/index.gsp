@@ -65,13 +65,17 @@
                 </div>
                 <div data-bind="foreach: imageList.images" id="imagesList">
                     <div class="imgCon">
-                        <a data-bind="attr:{href:bieLink}">
+                        <a data-bind="attr:{href:largeImageUrl}">
                             <img data-bind="attr:{src:smallImageUrl}"/><br/>
                         </a>
                         <div class="meta">
                             <span style="font-style: italic" data-bind="text:scientificName"></span><br>
-                            <span data-bind="text:vernacularName"></span>
-                            <span data-bind="text:typeStatus" class="pull-right"></span>
+                            <span data-bind="text:vernacularName"></span><br>
+                            <span data-bind="text:typeStatus"></span>
+                            <span class="pull-right">
+                                <a data-bind="attr:{href:bieLink}"><i class="icon-info-sign icon-white"></i></a>
+                                <a data-bind="attr:{href:largeImageUrl}"><i class="icon-zoom-in icon-white"></i></a>
+                            </span>
                         </div>
                     </div>
                 </div>
@@ -606,6 +610,7 @@
 
         });
 
+        // an abstraction to generalise the handling of ajax responses by different modules
         function AjaxLauncher (baseUrl) {
             var self = this;
             this.baseUrl = baseUrl;
@@ -631,6 +636,7 @@
             };
         }
 
+        // handles the resizing of images to achieve a gapless style similar to google images or flickr
         function ImageLayout () {
             var self = this,
                 $imageContainer = $('#imagesList'),
@@ -647,7 +653,6 @@
                         $(images[i]).data('height',$(images[i]).height());
                     }
                     console.log("original = " + $(images[i]).data('width') + '/' + $(images[i]).data('height'));
-                    //h += $(images[i]).width() / $(images[i]).height();
                     h += $(images[i]).data('width') / $(images[i]).data('height');
                 }
                 console.log("row count = " + images.length + " row height = " + width / h);
@@ -661,7 +666,6 @@
                         width: height * $(images[i]).data('width') / $(images[i]).data('height'),
                         height: height
                     });
-                    //$(images[i]).attr('src', $(images[i]).attr('src').replace(/w[0-9]+-h[0-9]+/, 'w' + $(images[i]).width() + '-h' + $(images[i]).height()));
                 }
             };
 
