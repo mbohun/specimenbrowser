@@ -57,14 +57,23 @@
                 <div class="alert alert-error" data-bind="visible:loadStatus()==='error'">An error occurred.</div>
                 <div class="alert alert-error" data-bind="visible:loadStatus()==='timeout'">The search timed out.</div>
                 <div id="debug" data-bind="if:taxonomy">
-                    <pre>Current rank: <span data-bind="text:taxonomy.currentRank"></span></pre>
+                    %{--<pre>Current rank: <span data-bind="text:taxonomy.currentRank"></span></pre>
                     <pre>Original rank: <span data-bind="text:taxonomy.originalRank"></span></pre>
-                    <pre>selectedASingleValueAtLowestRank: <span data-bind="text:taxonomy.selectedASingleValueAtLowestRank"></span></pre>
+                    <pre>selectedASingleValueAtLowestRank: <span data-bind="text:taxonomy.selectedASingleValueAtLowestRank"></span></pre>--}%
                     %{--<pre data-bind="text:ko.toJSON(taxonomy.hierarchy,null,2)"></pre>--}%
                     %{--<pre data-bind="text:ko.toJSON(query,null,2)"></pre>--}%
                 </div>
-                <div data-bind="foreach: imageList.images">
-                    <div class="imgCon"><a data-bind="attr:{href:bieLink}"><img data-bind="attr:{src:smallImageUrl}"/><br/><span data-bind="text:imageCaption"></span></a></div>
+                <div data-bind="foreach: imageList.images" id="imagesList">
+                    <div class="imgCon">
+                        <a data-bind="attr:{href:bieLink}">
+                            <img data-bind="attr:{src:smallImageUrl}"/><br/>
+                        </a>
+                        <div class="meta">
+                            <span style="font-style: italic" data-bind="text:scientificName"></span><br>
+                            <span data-bind="text:vernacularName"></span>
+                            <span data-bind="text:typeStatus" class="pull-right"></span>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
@@ -73,13 +82,13 @@
     <r:script>
 
         var wsBase = "/occurrences/search.json",
-            uiBase = "/occurrences/search",
-            ranks = ['kingdom', 'phylum', 'class', 'order', 'family', 'genus', 'species'/*, 'subspecies_name'*/], // support division and sub-ranks later
-            facetNames = {type_status: 'Types', raw_sex: 'Sex', family: 'Family', order: 'Order', 'class': 'Class',
-                kingdom: 'Kingdom', phylum: 'Phylum', genus: 'Genus', species: 'Species', subspecies_name: 'Sub-species'},
-            facetsToShow = ["type_status", "raw_sex"],
-            baseQuery = "?fq=multimedia:Image",
-            richQuery;
+                uiBase = "/occurrences/search",
+                ranks = ['kingdom', 'phylum', 'class', 'order', 'family', 'genus', 'species'/*, 'subspecies_name'*/], // support division and sub-ranks later
+                facetNames = {type_status: 'Types', raw_sex: 'Sex', family: 'Family', order: 'Order', 'class': 'Class',
+                    kingdom: 'Kingdom', phylum: 'Phylum', genus: 'Genus', species: 'Species', subspecies_name: 'Sub-species'},
+                facetsToShow = ["type_status", "raw_sex"],
+                baseQuery = "?fq=multimedia:Image",
+                richQuery;
 
         // add taxonomy facets sub-query
         $.each(ranks, function (idx, facet) {
@@ -94,8 +103,8 @@
         });
 
         var entityNameLookup = new AjaxLauncher(collectoryServicesURL + 'resolveNames/'),
-            richQueryUrl = richQuery + "&q=" + (entityUid === '' ? '*:*' : buildQueryString(entityUid)),
-            imagesLookup = new AjaxLauncher(urlConcat(biocacheServicesUrl, wsBase + richQueryUrl));
+                richQueryUrl = richQuery + "&q=" + (entityUid === '' ? '*:*' : buildQueryString(entityUid)),
+                imagesLookup = new AjaxLauncher(urlConcat(biocacheServicesUrl, wsBase + richQueryUrl));
 
         var initialQueryResultsLoaded;
 
@@ -148,7 +157,9 @@
             function Image(data) {
                 var self = this;
                 this.scientificName = data.scientificName;
+                this.vernacularName = data.vernacularName;
                 this.smallImageUrl = data.smallImageUrl;
+                this.largeImageUrl = data.largeImageUrl;
                 this.typeStatus = data.typeStatus;
                 this.uuid = data.uuid;
                 this.bieLink = ko.computed(function () {
@@ -174,6 +185,10 @@
                         self.images($.map(data.occurrences, function (item) {
                             return new Image(item);
                         }));
+                        // need to wait for rendering?
+                        setTimeout(function () {
+                            imageLayout.layoutImages();
+                        }, 1000);
                     });
                     xhr.fail(function () {
                         self.images([]);
@@ -387,7 +402,7 @@
                 // removes filters for the specified rank and all below it
                 this.clearRankAndBelow = function (rank) {
                     var idx = $.inArray(rank, ranks),
-                        ranksToClear = ranks.slice(idx);
+                            ranksToClear = ranks.slice(idx);
                     self.selectedASingleValueAtLowestRank(false);
                     $.each(ranksToClear, function (idx, item) {
                         parent.removeFilter(item);
@@ -411,10 +426,10 @@
 
                 // handles the setRank functionality for when the lowest rank link is clicked
                 /*this.setLowestRank = function () {
-                    self.nextRank = ranks[ranks.length - 1];
-                    self.clearRankAndBelow(self.nextRank);
-                    self.selectedASingleValueAtLowestRank(false);
-                };*/
+                 self.nextRank = ranks[ranks.length - 1];
+                 self.clearRankAndBelow(self.nextRank);
+                 self.selectedASingleValueAtLowestRank(false);
+                 };*/
 
                 // this allows the state to be set externally - eg for initial state
                 /* - note that it may be necessary to add the ranks in the correct order. Seems to work for now.
@@ -591,7 +606,7 @@
 
         });
 
-        function AjaxLauncher(baseUrl) {
+        function AjaxLauncher (baseUrl) {
             var self = this;
             this.baseUrl = baseUrl;
             this.subscribers = {};
@@ -615,6 +630,72 @@
                 list.push(callback);
             };
         }
+
+        function ImageLayout () {
+            var self = this,
+                $imageContainer = $('#imagesList'),
+                MAX_HEIGHT = 180;
+
+            this.getheight = function (images, width) {
+                width -= images.length * 5;
+                var h = 0;
+                for (var i = 0; i < images.length; ++i) {
+                    if ($(images[i]).data('width') === undefined) {
+                        $(images[i]).data('width',$(images[i]).width());
+                    }
+                    if ($(images[i]).data('height') === undefined) {
+                        $(images[i]).data('height',$(images[i]).height());
+                    }
+                    console.log("original = " + $(images[i]).data('width') + '/' + $(images[i]).data('height'));
+                    //h += $(images[i]).width() / $(images[i]).height();
+                    h += $(images[i]).data('width') / $(images[i]).data('height');
+                }
+                console.log("row count = " + images.length + " row height = " + width / h);
+                return width / h;
+            };
+
+            this.setheight = function (images, height) {
+                for (var i = 0; i < images.length; ++i) {
+                    console.log("setting width to " + height * $(images[i]).data('width') / $(images[i]).data('height'));
+                    $(images[i]).css({
+                        width: height * $(images[i]).data('width') / $(images[i]).data('height'),
+                        height: height
+                    });
+                    //$(images[i]).attr('src', $(images[i]).attr('src').replace(/w[0-9]+-h[0-9]+/, 'w' + $(images[i]).width() + '-h' + $(images[i]).height()));
+                }
+            };
+
+            this.layoutImages = function (maxHeight) {
+                var size = $imageContainer.innerWidth() - 30,
+                    n = 0,
+                    images = $imageContainer.find('img');
+                if (maxHeight === undefined) {
+                    maxHeight = MAX_HEIGHT;
+                }
+                w: while (images.length > 0) {
+                    for (var i = 1; i < images.length + 1; ++i) {
+                        var slice = images.slice(0, i);
+                        var h = self.getheight(slice, size);
+                        if (h < maxHeight) {
+                            self.setheight(slice, h);
+                            n++;
+                            images = images.slice(i);
+                            continue w;
+                        }
+                    }
+                    self.setheight(slice, Math.min(maxHeight, h));
+                    n++;
+                    break;
+                }
+            };
+
+            window.addEventListener('resize', function () {
+                self.layoutImages();
+            });
+        }
+
+        var imageLayout = new ImageLayout();
+
     </r:script>
 </body>
 </html>
