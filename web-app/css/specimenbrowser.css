@@ -106,3 +106,7 @@ ul {
 #taxonomyFacet .level8 {
     margin-left: 32px;
 }
+
+#imageViewer {
+    height: 600px;
+}

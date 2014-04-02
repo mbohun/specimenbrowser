@@ -11,4 +11,9 @@ modules = {
     bbq {
         resource 'js/jquery.ba-bbq.min.js'
     }
+
+    leaflet {
+        resource 'leaflet/leaflet.css'
+        resource 'leaflet/leaflet.js'
+    }
 }

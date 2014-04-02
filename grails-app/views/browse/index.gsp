@@ -8,6 +8,7 @@
         var biocacheServicesUrl = "${grailsApplication.config.biocacheServicesUrl}",
             biocacheWebappUrl = "${grailsApplication.config.biocache.baseURL}",
             collectoryServicesURL = "${grailsApplication.config.collectory.servicesURL}",
+            imageViewerBaseUrl = "${createLink(controller: 'view', action: 'view')}",
             entityUid = "${uid}";
     </r:script>
 </head>
@@ -65,20 +66,21 @@
                 </div>
                 <div data-bind="foreach: imageList.images" id="imagesList">
                     <div class="imgCon">
-                        <a data-bind="attr:{href:largeImageUrl}">
+                        <a data-bind="attr:{href:largeImageViewerUrl}">
                             <img data-bind="attr:{src:smallImageUrl}"/><br/>
                         </a>
-                        <div class="meta">
+                        <div class="meta" data-bind="attr:{'data-uuid':uuid}">
                             <span style="font-style: italic" data-bind="text:scientificName"></span><br>
                             <span data-bind="text:vernacularName"></span><br>
                             <span data-bind="text:typeStatus"></span>
                             <span class="pull-right">
-                                <a data-bind="attr:{href:bieLink}"><i class="icon-info-sign icon-white"></i></a>
-                                <a data-bind="attr:{href:largeImageUrl}"><i class="icon-zoom-in icon-white"></i></a>
+                                <a data-bind="attr:{href:recordLink}"><i class="icon-info-sign icon-white"></i></a>
+                                <a data-bind="attr:{href:largeImageViewerUrl}"><i class="icon-zoom-in icon-white"></i></a>
                             </span>
                         </div>
                     </div>
                 </div>
+                <div><span data-bind="click:imageList.getMoreResults" class="clickable">See more images</span></div>
             </div>
         </div>
 
@@ -92,14 +94,15 @@
                     kingdom: 'Kingdom', phylum: 'Phylum', genus: 'Genus', species: 'Species', subspecies_name: 'Sub-species'},
                 facetsToShow = ["type_status", "raw_sex"],
                 baseQuery = "?fq=multimedia:Image",
-                richQuery;
+                richQuery,
+                pageSize = 100;
 
         // add taxonomy facets sub-query
         $.each(ranks, function (idx, facet) {
             baseQuery += "&facets=" + facet;
         });
 
-        richQuery = baseQuery + "&pageSize=100";
+        richQuery = baseQuery + "&pageSize=" + pageSize;
 
         // add general facets to rich query
         $.each(facetsToShow, function (idx, facet) {
@@ -166,7 +169,19 @@
                 this.largeImageUrl = data.largeImageUrl;
                 this.typeStatus = data.typeStatus;
                 this.uuid = data.uuid;
-                this.bieLink = ko.computed(function () {
+                this.largeImageViewerUrl = ko.computed(function () {
+                    var url = imageViewerBaseUrl + '/' + self.uuid;
+                    url += '?title=' + self.scientificName;
+                    if (self.vernacularName !== undefined) {
+                        url += '&common=' + self.vernacularName;
+                    }
+                    if (self.typeStatus !== undefined) {
+                        url += '&typeStatus=' + self.typeStatus;
+                    }
+                    url += '&recordId=' + self.uuid;
+                    return url;
+                });
+                this.recordLink = ko.computed(function () {
                     return biocacheWebappUrl + 'occurrences/' + self.uuid;
                 });
                 this.imageCaption = ko.computed(function () {
@@ -183,12 +198,21 @@
                 // the images
                 this.images = ko.observableArray([]);
 
+                // the next offset for getting results
+                this.offset = 0;
+
                 // handler for completed image searches
                 imagesLookup.subscribe(function (xhr, key) {
                     xhr.done(function (data) {
-                        self.images($.map(data.occurrences, function (item) {
-                            return new Image(item);
-                        }));
+                        if (self.offset === 0) {
+                            self.images($.map(data.occurrences, function (item) {
+                                return new Image(item);
+                            }));
+                        } else {
+                            ko.utils.arrayPushAll(self.images, $.map(data.occurrences, function (item) {
+                                return new Image(item);
+                            }));
+                        }
                         // need to wait for rendering?
                         setTimeout(function () {
                             imageLayout.layoutImages();
@@ -198,6 +222,11 @@
                         self.images([]);
                     });
                 }, 'imagesSearch');
+
+                this.getMoreResults = function () {
+                    //self.offset += pageSize;
+                    //viewModel.load(self.offset);
+                }
             }
 
             // represents the search criteria - a change in the query string will trigger a new search
@@ -573,7 +602,7 @@
                 // launches the search
                 this.load = function () {
                     self.isLoading(true);
-                    console.log("load: queryString = " + self.query.queryString());
+                    //console.log("load: queryString = " + self.query.queryString());
                     imagesLookup.launch(self.query.queryString(), 'imagesSearch');
                 }
             }
@@ -610,58 +639,32 @@
 
         });
 
-        // an abstraction to generalise the handling of ajax responses by different modules
-        function AjaxLauncher (baseUrl) {
-            var self = this;
-            this.baseUrl = baseUrl;
-            this.subscribers = {};
-            this.launch = function (query, keyword) {
-                keyword = keyword === undefined ? 'default' : keyword;
-                var xhr = $.ajax({url: baseUrl + query, dataType: 'jsonp', timeout: 20000}),
-                        list = self.subscribers[keyword];
-                if (list !== undefined) {
-                    $.each(list, function (idx, callback) {
-                        callback(xhr, keyword);
-                    });
-                }
-            };
-            this.subscribe = function (callback, keyword) {
-                keyword = keyword === undefined ? 'default' : keyword;
-                var list = self.subscribers[keyword];
-                if (list === undefined) {
-                    list = [];
-                    self.subscribers[keyword] = list;
-                }
-                list.push(callback);
-            };
-        }
-
         // handles the resizing of images to achieve a gapless style similar to google images or flickr
-        function ImageLayout () {
+        function ImageLayout() {
             var self = this,
-                $imageContainer = $('#imagesList'),
-                MAX_HEIGHT = 180;
+                    $imageContainer = $('#imagesList'),
+                    MAX_HEIGHT = 180;
 
             this.getheight = function (images, width) {
                 width -= images.length * 5;
                 var h = 0;
                 for (var i = 0; i < images.length; ++i) {
                     if ($(images[i]).data('width') === undefined) {
-                        $(images[i]).data('width',$(images[i]).width());
+                        $(images[i]).data('width', $(images[i]).width());
                     }
                     if ($(images[i]).data('height') === undefined) {
-                        $(images[i]).data('height',$(images[i]).height());
+                        $(images[i]).data('height', $(images[i]).height());
                     }
-                    console.log("original = " + $(images[i]).data('width') + '/' + $(images[i]).data('height'));
+                    //console.log("original = " + $(images[i]).data('width') + '/' + $(images[i]).data('height'));
                     h += $(images[i]).data('width') / $(images[i]).data('height');
                 }
-                console.log("row count = " + images.length + " row height = " + width / h);
+                //console.log("row count = " + images.length + " row height = " + width / h);
                 return width / h;
             };
 
             this.setheight = function (images, height) {
                 for (var i = 0; i < images.length; ++i) {
-                    console.log("setting width to " + height * $(images[i]).data('width') / $(images[i]).data('height'));
+                    //console.log("setting width to " + height * $(images[i]).data('width') / $(images[i]).data('height'));
                     $(images[i]).css({
                         width: height * $(images[i]).data('width') / $(images[i]).data('height'),
                         height: height
@@ -671,8 +674,8 @@
 
             this.layoutImages = function (maxHeight) {
                 var size = $imageContainer.innerWidth() - 30,
-                    n = 0,
-                    images = $imageContainer.find('img');
+                        n = 0,
+                        images = $imageContainer.find('img');
                 if (maxHeight === undefined) {
                     maxHeight = MAX_HEIGHT;
                 }

@@ -46,3 +46,30 @@ function urlConcat(base, context) {
     // join
     return base + "/" + context;
 }
+// an abstraction to generalise the handling of ajax responses by different modules
+function AjaxLauncher (baseUrl) {
+    var self = this;
+    this.baseUrl = baseUrl;
+    this.subscribers = {};
+    this.launch = function (query, keyword) {
+        keyword = keyword === undefined ? 'default' : keyword;
+        query = query === undefined ? '' : query;
+        var xhr = $.ajax({url: baseUrl + query, dataType: 'jsonp', timeout: 20000}),
+            list = self.subscribers[keyword];
+        if (list !== undefined) {
+            $.each(list, function (idx, callback) {
+                callback(xhr, keyword);
+            });
+        }
+    };
+    this.subscribe = function (callback, keyword) {
+        keyword = keyword === undefined ? 'default' : keyword;
+        var list = self.subscribers[keyword];
+        if (list === undefined) {
+            list = [];
+            self.subscribers[keyword] = list;
+        }
+        list.push(callback);
+    };
+}
+

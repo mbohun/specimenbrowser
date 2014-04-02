@@ -71,7 +71,7 @@
 
 <hf:menu/>
 
-<div class="container" id="main-content">
+<div class="container-fluid" id="main-content">
     <g:layoutBody />
 </div><!--/.container-->
 
