@@ -50,26 +50,38 @@ ul {
 }
 
 .imgCon .meta {
-    color: white;
-    background-color: black;
     opacity: 0.7;
     position: absolute;
     bottom: 0;
     left: 0;
     right: 0;
     overflow: hidden;
-    display: none;
     text-align: left;
     padding: 4px 6px 2px 8px;
 }
 
-.imgCon:hover .meta {
+.imgCon .full {
+    color: white;
+    background-color: black;
+    display: none;
+}
+
+.imgCon .brief {
+    color: black;
+    background-color: white;
+}
+
+.imgCon .hover-target {
+    display: none;
+}
+
+.imgCon:hover .full {
     display: inline-block;
 }
 
-/*.imgCon img {
-    max-height:150px;
-}*/
+.imgCon:hover .brief {
+    display: none;
+}
 
 #taxonomyFacet .level0 {
     margin-left: 0;

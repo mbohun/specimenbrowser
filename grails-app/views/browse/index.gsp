@@ -69,11 +69,18 @@
                         <a data-bind="attr:{href:largeImageViewerUrl}">
                             <img data-bind="attr:{src:smallImageUrl}"/><br/>
                         </a>
-                        <div class="meta" data-bind="attr:{'data-uuid':uuid}">
-                            <span style="font-style: italic" data-bind="text:scientificName"></span><br>
-                            <span data-bind="text:vernacularName"></span><br>
-                            <span data-bind="text:typeStatus"></span>
-                            <span class="pull-right">
+                        <div class="meta brief" data-bind="attr:{'data-uuid':uuid}">
+                            <ul class="unstyled pull-left" style="margin: 0">
+                                <li class="title" data-bind="text:scientificName"></li>
+                            </ul>
+                        </div>
+                        <div class="meta full hover-target" data-bind="attr:{'data-uuid':uuid}">
+                            <ul class="unstyled pull-left" style="margin: 0">
+                                <li class="title" data-bind="text:scientificName"></li>
+                                <li data-bind="text:vernacularName,visible:vernacularName"></li>
+                                <li data-bind="text:typeStatus,visible:typeStatus"></li>
+                            </ul>
+                            <span class="pull-right" style="position:absolute;bottom:4px;right:4px;">
                                 <a data-bind="attr:{href:recordLink}"><i class="icon-info-sign icon-white"></i></a>
                                 <a data-bind="attr:{href:largeImageViewerUrl}"><i class="icon-zoom-in icon-white"></i></a>
                             </span>
@@ -643,7 +650,7 @@
         function ImageLayout() {
             var self = this,
                     $imageContainer = $('#imagesList'),
-                    MAX_HEIGHT = 180;
+                    MAX_HEIGHT = ${maxRowHeight};
 
             this.getheight = function (images, width) {
                 width -= images.length * 5;
