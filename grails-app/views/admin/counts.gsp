@@ -46,7 +46,7 @@
                     self.name(data[self.uid]);
                 });
                 this.gotoBrowse = function () {
-                    document,location.href = browseUrl + '/' + self.uid;
+                    document.location.href = browseUrl + '/' + self.uid;
                 };
             };
             var ViewModel = function () {
