@@ -67,7 +67,7 @@
                 <div data-bind="foreach: imageList.images" id="imagesList">
                     <div class="imgCon">
                         <a data-bind="attr:{href:largeImageViewerUrl}">
-                            <img data-bind="attr:{src:smallImageUrl}"/><br/>
+                            <img data-bind="attr:{src:smallImageUrl,'data-width':thumbWidth,'data-height':thumbHeight}"/><br/>
                         </a>
                         <div class="meta brief" data-bind="attr:{'data-uuid':uuid}">
                             <ul class="unstyled pull-left" style="margin: 0">
@@ -95,14 +95,14 @@
     <r:script>
 
         var wsBase = "/occurrences/search.json",
-                uiBase = "/occurrences/search",
-                ranks = ['kingdom', 'phylum', 'class', 'order', 'family', 'genus', 'species'/*, 'subspecies_name'*/], // support division and sub-ranks later
-                facetNames = {type_status: 'Types', raw_sex: 'Sex', family: 'Family', order: 'Order', 'class': 'Class',
-                    kingdom: 'Kingdom', phylum: 'Phylum', genus: 'Genus', species: 'Species', subspecies_name: 'Sub-species'},
-                facetsToShow = ["type_status", "raw_sex"],
-                baseQuery = "?fq=multimedia:Image",
-                richQuery,
-                pageSize = 100;
+            uiBase = "/occurrences/search",
+            ranks = ['kingdom', 'phylum', 'class', 'order', 'family', 'genus', 'species'/*, 'subspecies_name'*/], // support division and sub-ranks later
+            facetNames = {type_status: 'Types', raw_sex: 'Sex', family: 'Family', order: 'Order', 'class': 'Class',
+                kingdom: 'Kingdom', phylum: 'Phylum', genus: 'Genus', species: 'Species', subspecies_name: 'Sub-species'},
+            facetsToShow = ["type_status", "raw_sex"],
+            baseQuery = "?fq=multimedia:Image&im=true",
+            richQuery,
+            pageSize = 100;
 
         // add taxonomy facets sub-query
         $.each(ranks, function (idx, facet) {
@@ -117,8 +117,8 @@
         });
 
         var entityNameLookup = new AjaxLauncher(collectoryServicesURL + 'resolveNames/'),
-                richQueryUrl = richQuery + "&q=" + (entityUid === '' ? '*:*' : buildQueryString(entityUid)),
-                imagesLookup = new AjaxLauncher(urlConcat(biocacheServicesUrl, wsBase + richQueryUrl));
+            richQueryUrl = richQuery + "&q=" + (entityUid === '' ? '*:*' : buildQueryString(entityUid)),
+            imagesLookup = new AjaxLauncher(urlConcat(biocacheServicesUrl, wsBase + richQueryUrl));
 
         var initialQueryResultsLoaded;
 
@@ -169,11 +169,15 @@
 
             // represents a displayed image
             function Image(data) {
-                var self = this;
+                var self = this,
+                    metadata = data.imageMetadata[0];
+
                 this.scientificName = data.scientificName;
                 this.vernacularName = data.vernacularName;
-                this.smallImageUrl = data.smallImageUrl;
-                this.largeImageUrl = data.largeImageUrl;
+                this.smallImageUrl = metadata ? metadata.thumbUrl : data.smallImageUrl;
+                this.thumbWidth = metadata.thumbWidth;
+                this.thumbHeight = metadata.thumbHeight;
+                this.largeImageUrl = metadata ? metadata.imageUrl : data.largeImageUrl;
                 this.typeStatus = data.typeStatus;
                 this.uuid = data.uuid;
                 this.largeImageViewerUrl = ko.computed(function () {
@@ -186,6 +190,11 @@
                         url += '&typeStatus=' + self.typeStatus;
                     }
                     url += '&recordId=' + self.uuid;
+                    url += '&tileZoomLevels=' + metadata.tileZoomLevels;
+                    url += '&height=' + metadata.height;
+                    url += '&width=' + metadata.width;
+                    url += '&urlPattern=' + metadata.tilesUrlPattern;
+                    console.log('pattern = ' + url);
                     return url;
                 });
                 this.recordLink = ko.computed(function () {
@@ -212,18 +221,22 @@
                 imagesLookup.subscribe(function (xhr, key) {
                     xhr.done(function (data) {
                         if (self.offset === 0) {
-                            self.images($.map(data.occurrences, function (item) {
-                                return new Image(item);
-                            }));
+                            // temp hack to filter out images without metadata
+                            var imagesWithMetadata = $.grep(data.occurrences, function (item) {
+                                return (item.imageMetadata !== undefined);
+                            });
+
+                            self.images($.map(imagesWithMetadata,
+                                function (item) {
+                                    return new Image(item);
+                                }));
                         } else {
                             ko.utils.arrayPushAll(self.images, $.map(data.occurrences, function (item) {
                                 return new Image(item);
                             }));
                         }
-                        // need to wait for rendering?
-                        setTimeout(function () {
-                            imageLayout.layoutImages();
-                        }, 1000);
+                        // layout images
+                        imageLayout.layoutImages();
                     });
                     xhr.fail(function () {
                         self.images([]);

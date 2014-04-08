@@ -5,8 +5,7 @@
     <title>Specimen image viewer prototype</title>
     <r:require modules="leaflet,knockout"/>
     <r:script disposition="head">
-        var imageInfoUrl = "${grailsApplication.config.ala.image.infoURL}",
-            biocacheServicesUrl = "${grailsApplication.config.biocacheServicesUrl}",
+        var biocacheServicesUrl = "${grailsApplication.config.biocacheServicesUrl}",
             biocacheWebappUrl = "${grailsApplication.config.biocache.baseURL}",
             entityUid = "${uid}";
     </r:script>
@@ -27,42 +26,36 @@
         <div id="imageViewer"></div>
     </div>
     <r:script>
-        var imageId = "${imageId}";
-        var imageMetadataLookup = new AjaxLauncher(imageInfoUrl + imageId);
-
         $(document).ready(function () {
 
             var maxZoom, imageHeight, imageWidth, imageScaleFactor, centerx, centery, viewer, urlMask, zoomLevels;
-            // make a call to get the image metadata
-            imageMetadataLookup.subscribe(function (request) {
-                request.done(function (data) {
-                    zoomLevels = data.tileZoomLevels;
-                    maxZoom = zoomLevels - 1;
-                    imageHeight = data.height;
-                    imageWidth = data.width;
-                    imageScaleFactor =  Math.pow(2, zoomLevels - 1);
-                    centerx = (imageWidth / 2) / imageScaleFactor;
-                    centery = (imageHeight / 2) / imageScaleFactor;
+            zoomLevels = ${imageMetadata.tileZoomLevels};
+            maxZoom = zoomLevels - 1;
+            imageHeight = ${imageMetadata.height};
+            imageWidth = ${imageMetadata.width};
+            imageScaleFactor =  Math.pow(2, zoomLevels - 1);
+            centerx = (imageWidth / 2) / imageScaleFactor;
+            centery = (imageHeight / 2) / imageScaleFactor;
+            console.log("zoomLevels=" + zoomLevels + " width=" + imageWidth + " height=" + imageHeight);
+            console.log("maxZoom=" + maxZoom + " centerx=" + centerx + " centery=" + centery);
+            console.log("urlPattern=${imageMetadata.pattern}");
 
-                    viewer = L.map('imageViewer', {
-                        minZoom: 2,
-                        maxZoom: maxZoom,
-                        zoom: 2,
-                        center:new L.LatLng(centery, centerx),
-                        crs: L.CRS.Simple
-                    });
-
-                    urlMask = data.tileUrlPattern;
-                    L.tileLayer(urlMask, {
-                        attribution: '',
-                        maxNativeZoom: zoomLevels,
-                        continuousWorld: true,
-                        tms: true,
-                        noWrap: true
-                    }).addTo(viewer);
-                });
+            viewer = L.map('imageViewer', {
+                minZoom: 2,
+                maxZoom: maxZoom,
+                zoom: 2,
+                center:new L.LatLng(centery, centerx),
+                crs: L.CRS.Simple
             });
-            imageMetadataLookup.launch();
+
+            urlMask = "${imageMetadata.pattern}";
+            L.tileLayer(urlMask, {
+                attribution: '',
+                maxNativeZoom: zoomLevels,
+                continuousWorld: true,
+                tms: true,
+                noWrap: true
+            }).addTo(viewer);
         });
 
     </r:script>

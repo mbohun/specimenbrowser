@@ -6,6 +6,19 @@ import org.springframework.core.io.support.PathMatchingResourcePatternResolver
 class AdminController {
 
     def index() {}
+    def tools() {}
+    def counts() {}
+
+    def settings() {
+        def settings = []
+        def config = grailsApplication.config.flatten()
+        ['ala.baseURL','grails.serverURL','grails.config.locations','collectory.baseURL',
+         'headerAndFooter.baseURL','biocacheServicesUrl','collectory.servicesURL'
+        ].each {
+            settings << [key: it, value: config[it], comment: '']
+        }
+        [settings: settings]
+    }
 
     def reloadConfig = {
         // clear any cached external config
@@ -29,21 +42,8 @@ class AdminController {
                 def newConfig = configSlurper.parse(props)
                 grailsApplication.getConfig().merge(newConfig)
             }
-            String res = "<ul>"
-            grailsApplication.config.each { key, value ->
-                if (value instanceof Map) {
-                    res += "<p>" + key + "</p>"
-                    res += "<ul>"
-                    value.each { k1, v1 ->
-                        res += "<li>" + k1 + " = " + v1 + "</li>"
-                    }
-                    res += "</ul>"
-                }
-                else {
-                    res += "<li>${key} = ${value}</li>"
-                }
-            }
-            render res + "</ul>"
+            flash.message = "Config reloaded from ${grailsApplication.config.reloadable.cfgs[0]}."
+            render 'done'
         }
         catch (FileNotFoundException fnf) {
             println "No external config to reload configuration. Looking for ${grailsApplication.config.reloadable.cfgs[0]}"
