@@ -3,7 +3,7 @@
 <head>
     <meta name="layout" content="main"/>
     <title>Specimen image viewer prototype</title>
-    <r:require modules="leaflet,knockout"/>
+    <r:require module="leaflet"/>
     <r:script disposition="head">
         var biocacheServicesUrl = "${grailsApplication.config.biocacheServicesUrl}",
             biocacheWebappUrl = "${grailsApplication.config.biocache.baseURL}",
@@ -41,6 +41,7 @@
             console.log("urlPattern=${imageMetadata.pattern}");
 
             viewer = L.map('imageViewer', {
+                fullscreenControl: true,
                 minZoom: 2,
                 maxZoom: maxZoom,
                 zoom: 2,

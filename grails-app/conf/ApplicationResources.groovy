@@ -14,6 +14,8 @@ modules = {
 
     leaflet {
         resource 'leaflet/leaflet.css'
+        resource 'leaflet/Control.FullScreen.css'
         resource 'leaflet/leaflet.js'
+        resource 'leaflet/Control.FullScreen.js'
     }
 }
