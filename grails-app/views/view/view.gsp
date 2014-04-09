@@ -36,15 +36,15 @@
             imageScaleFactor =  Math.pow(2, zoomLevels - 1);
             centerx = (imageWidth / 2) / imageScaleFactor;
             centery = (imageHeight / 2) / imageScaleFactor;
-            console.log("zoomLevels=" + zoomLevels + " width=" + imageWidth + " height=" + imageHeight);
-            console.log("maxZoom=" + maxZoom + " centerx=" + centerx + " centery=" + centery);
-            console.log("urlPattern=${imageMetadata.pattern}");
+            //console.log("zoomLevels=" + zoomLevels + " width=" + imageWidth + " height=" + imageHeight);
+            //console.log("maxZoom=" + maxZoom + " centerx=" + centerx + " centery=" + centery);
+            //console.log("urlPattern=${imageMetadata.pattern}");
 
             viewer = L.map('imageViewer', {
                 fullscreenControl: true,
                 minZoom: 2,
                 maxZoom: maxZoom,
-                zoom: 2,
+                zoom: imageWidth < 2000 ? 3 : 2,
                 center:new L.LatLng(centery, centerx),
                 crs: L.CRS.Simple
             });
