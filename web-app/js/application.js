@@ -51,14 +51,14 @@ function AjaxLauncher (baseUrl) {
     var self = this;
     this.baseUrl = baseUrl;
     this.subscribers = {};
-    this.launch = function (query, keyword) {
+    this.launch = function (query, keyword, data) {
         keyword = keyword === undefined ? 'default' : keyword;
         query = query === undefined ? '' : query;
         var xhr = $.ajax({url: baseUrl + query, dataType: 'jsonp', timeout: 20000}),
             list = self.subscribers[keyword];
         if (list !== undefined) {
             $.each(list, function (idx, callback) {
-                callback(xhr, keyword);
+                callback(xhr, keyword, data);
             });
         }
     };

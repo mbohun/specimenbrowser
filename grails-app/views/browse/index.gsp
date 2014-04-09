@@ -15,7 +15,7 @@
 
 <body>
     <div id="content">
-        <h2>Specimen images from <span data-bind="text:entityName"></span> <r:img style="margin-left:100px;" data-bind="visible:isLoading" dir="images" file="ajax-loader.gif"/> </h2>
+        <h2>Specimen images from <span data-bind="text:entityName"></span></h2>
         <div class="row-fluid">
             <div class="span3 well well-small">
                 <span data-bind="click:clearAllFilters" class="clickable">All</span>
@@ -49,6 +49,11 @@
                         <li><span class="clickable" data-bind="click:filterSearch">all values</span></li>
                     </ul>
                 </div>
+                %{--<div id="debug2">
+                    <pre>Images: <span data-bind="text:imageList.numberOfImages"></span></pre>
+                    <pre>Records processed: <span data-bind="text:imageList.numberOfRecordsProcessed"></span></pre>
+                    <pre>Offset: <span data-bind="text:imageList.offset"></span></pre>
+                </div>--}%
             </div>
             <div class="span9">
                 <div class="alert alert-success" data-bind="visible:loadStatus()==='done'">
@@ -87,7 +92,10 @@
                         </div>
                     </div>
                 </div>
-                <div><span data-bind="click:imageList.getMoreResults" class="clickable">See more images</span></div>
+                <div style="text-align:center;margin-top:15px;">
+                    <r:img style="" data-bind="visible:isLoading" dir="images" file="ajax-loader.gif"/>
+                    <span data-bind="visible:!hasMoreResults()&&!isLoading(),click:imageList.getMoreResults" class="btn clickable">Show more results</span>
+                </div>
             </div>
         </div>
 
@@ -194,7 +202,7 @@
                     url += '&height=' + metadata.height;
                     url += '&width=' + metadata.width;
                     url += '&urlPattern=' + metadata.tilesUrlPattern;
-                    console.log('pattern = ' + url);
+                    //console.log('pattern = ' + url);
                     return url;
                 });
                 this.recordLink = ko.computed(function () {
@@ -217,24 +225,27 @@
                 // the next offset for getting results
                 this.offset = 0;
 
-                // handler for completed image searches
-                imagesLookup.subscribe(function (xhr, key) {
-                    xhr.done(function (data) {
-                        if (self.offset === 0) {
-                            // temp hack to filter out images without metadata
-                            var imagesWithMetadata = $.grep(data.occurrences, function (item) {
-                                return (item.imageMetadata !== undefined);
-                            });
+                // the number of results processed (potentially > the number of actual images displayed)
+                this.recordsProcessed = ko.observable(0);
 
-                            self.images($.map(imagesWithMetadata,
-                                function (item) {
-                                    return new Image(item);
-                                }));
-                        } else {
-                            ko.utils.arrayPushAll(self.images, $.map(data.occurrences, function (item) {
-                                return new Image(item);
-                            }));
+                // handler for completed image searches
+                imagesLookup.subscribe(function (xhr, key, context) {
+                    xhr.done(function (data) {
+                        // clear list unless we are loading more
+                        if (context !== 'load-more') {
+                            self.images([]);
+                            self.recordsProcessed(0);
+                            self.offset = 0;
                         }
+                        self.recordsProcessed(self.recordsProcessed() + data.occurrences.length);
+
+                        // temp hack to filter out images without metadata
+                        var imagesWithMetadata = $.grep(data.occurrences, function (item) {
+                            return (item.imageMetadata !== undefined);
+                        });
+                        ko.utils.arrayPushAll(self.images, $.map(imagesWithMetadata, function (item) {
+                            return new Image(item);
+                        }));
                         // layout images
                         imageLayout.layoutImages();
                     });
@@ -243,10 +254,18 @@
                     });
                 }, 'imagesSearch');
 
+                this.numberOfImages = ko.computed(function () {
+                    return self.images().length;
+                });
+
+                this.numberOfRecordsProcessed = ko.computed(function () {
+                    return self.recordsProcessed();
+                });
+
                 this.getMoreResults = function () {
-                    //self.offset += pageSize;
-                    //viewModel.load(self.offset);
-                }
+                    self.offset += pageSize;
+                    viewModel.load('load-more', self.offset);
+                };
             }
 
             // represents the search criteria - a change in the query string will trigger a new search
@@ -566,6 +585,11 @@
                 // the number of records returned from the search
                 this.totalRecords = ko.observable();
 
+                this.hasMoreResults = ko.computed(function () {
+                    //console.log("hasMoreResults: total records = " + self.totalRecords() + " records processed = " + self.imageList.numberOfRecordsProcessed());
+                    return self.totalRecords() === undefined ? false : self.imageList.numberOfRecordsProcessed() >= self.totalRecords();
+                });
+
                 // adds a filter and updates the url
                 this.addFilter = function (facetName, facetValue) {
                     var obj = {};
@@ -620,10 +644,11 @@
                 }, 'imagesSearch');
 
                 // launches the search
-                this.load = function () {
+                this.load = function (userData, offset) {
+                    var start = (offset !== undefined && offset > 0) ? '&start=' + offset : '';
                     self.isLoading(true);
                     //console.log("load: queryString = " + self.query.queryString());
-                    imagesLookup.launch(self.query.queryString(), 'imagesSearch');
+                    imagesLookup.launch(self.query.queryString() + start, 'imagesSearch', userData);
                 }
             }
 
