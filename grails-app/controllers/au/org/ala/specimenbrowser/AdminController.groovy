@@ -13,7 +13,7 @@ class AdminController {
         def settings = []
         def config = grailsApplication.config.flatten()
         ['ala.baseURL','grails.serverURL','grails.config.locations','collectory.baseURL',
-         'headerAndFooter.baseURL','biocacheServicesUrl','collectory.servicesURL'
+         'headerAndFooter.baseURL','biocacheServicesUrl','collectory.servicesURL','ala.image.infoURL'
         ].each {
             settings << [key: it, value: config[it], comment: '']
         }

@@ -189,20 +189,12 @@
                 this.typeStatus = data.typeStatus;
                 this.uuid = data.uuid;
                 this.largeImageViewerUrl = ko.computed(function () {
-                    var url = imageViewerBaseUrl + '/' + self.uuid;
+                    var url = imageViewerBaseUrl + '/' + metadata.imageId;
                     url += '?title=' + self.scientificName;
                     if (self.vernacularName !== undefined) {
                         url += '&common=' + self.vernacularName;
                     }
-                    if (self.typeStatus !== undefined) {
-                        url += '&typeStatus=' + self.typeStatus;
-                    }
                     url += '&recordId=' + self.uuid;
-                    url += '&tileZoomLevels=' + metadata.tileZoomLevels;
-                    url += '&height=' + metadata.height;
-                    url += '&width=' + metadata.width;
-                    url += '&urlPattern=' + metadata.tilesUrlPattern;
-                    //console.log('pattern = ' + url);
                     return url;
                 });
                 this.recordLink = ko.computed(function () {

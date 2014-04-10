@@ -77,6 +77,9 @@ if (!spatial.baseURL) {
 if (!ala.baseURL) {
     ala.baseURL = "http://www.ala.org.au/"
 }
+if (!ala.image.infoURL) {
+    ala.image.infoURL = "http://images.ala.org.au/ws/getImageInfo/"
+}
 
 // The default codec used to encode data with ${}
 grails.views.default.codec = "none" // none, html, base64
