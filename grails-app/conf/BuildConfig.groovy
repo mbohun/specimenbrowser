@@ -41,7 +41,10 @@ grails.project.dependency.resolution = {
     }
 
     plugins {
-        build ':release:2.0.4'
+        build ':release:2.0.4', ':rest-client-builder:1.0.3', {
+	    export = false
+        }
+
         runtime ":jquery:1.8.3"
         runtime ":resources:1.1.6"
         runtime ":ala-web-theme:0.2.2"
