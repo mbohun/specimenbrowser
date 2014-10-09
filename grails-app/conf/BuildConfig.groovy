@@ -41,7 +41,6 @@ grails.project.dependency.resolution = {
     }
 
     plugins {
-        build ":release:2.2.0"
         runtime ":jquery:1.8.3"
         runtime ":resources:1.1.6"
         runtime ":ala-web-theme:0.2.2"
